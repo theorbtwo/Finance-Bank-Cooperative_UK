@@ -96,9 +96,16 @@ sub login {
   $self->pin($self->pin->()) if ref $self->pin;
   my %form_data;
   for ($self->mech->look_down(_tag => 'select', id => qr/^[a-z]+PassCodeDigit$/)) {
-    my $n = $_->attr('id');
+    my ($n_en) = $_->attr('id') =~ m/^([a-z]+)PassCodeDigit$/;
+    my $n = {first => 1,
+             second => 2,
+             third => 3,
+             fourth => 4,
+            }->{$n_en};
+    $form_data{$_->id} = substr($self->pin, $n, 1);
   }
 
+  $self->mech->submit_form(with_fields => \%form_data);
 
   $self->mech->dump;
 

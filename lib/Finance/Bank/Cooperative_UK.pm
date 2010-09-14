@@ -7,6 +7,29 @@ use WWW::Mechanize::TreeBuilder;
 
 our $VERSION = '0.001';
 
+=head2 Other attributes
+
+=over 4
+
+=item start_url
+
+The URL of the first page of the login procedure (sort code & account
+number).  This is mostly for testing purposes, but perhaps you can
+think of another use.  The defualt is reasonable, so you shouldn't
+have to worry about it.
+
+=item mech
+
+The L<WWW::Mechanize> instance used.  Feel free to, say, change the
+user-agent string.  Defaults reasonably.
+
+=cut
+
+has 'start_url', (
+                  is => 'rw',
+                  lazy => 1,
+                  default => 'https://welcome27.co-operativebank.co.uk/CBIBSWeb/start.do',
+                 );
 has 'mech', (
              is => 'rw',
              lazy => 1,
@@ -35,12 +58,12 @@ code / account number.
 
 The sortcode of your bank account, a six-character string of digits.
 
-=item account
+=item accountnum
 
 The account number of your bank account, an eight-character string of
 digits.  (Careful to quote this, or it will loose leading zeros.)
 
-=item number
+=item pin
 
 Your four-digit PIN code.  There is no mechinisim for providing only
 the needed characters.
@@ -49,15 +72,15 @@ the needed characters.
 
 Your memorable name.
 
-=item birth
+=item place_of_birth
 
 Your place of birth.
 
-=item first
+=item first_school
 
 Your first school attended.
 
-=item last
+=item last_school
 
 Your last school attended.
 
@@ -71,9 +94,9 @@ has 'sortcode', is => 'rw', required => 1;
 has 'accountnum', is => 'rw', required => 1;
 has 'pin', is => 'rw', required => 1;
 has 'name', is => 'rw', required => 1;
-has 'place', is => 'rw', required => 1;
-has 'first', is => 'rw', required => 1;
-has 'last', is => 'rw', required => 1;
+has 'place_of_birth', is => 'rw', required => 1;
+has 'first_school', is => 'rw', required => 1;
+has 'last_school', is => 'rw', required => 1;
 has 'date', is => 'rw', required => 1;
 
 sub login {
@@ -82,7 +105,7 @@ sub login {
   # the commented URL just does a meta-tag based redirect to the uncommnted one.  Lazyness.
   # $self->mech->get('http://www.co-operativebank.co.uk/star/pibs/index.html');
   # First screen: sort code / account number
-  $self->mech->get('https://welcome27.co-operativebank.co.uk/CBIBSWeb/start.do');
+  $self->mech->get($self->start_url);
 
   $self->sortcode($self->sortcode->()) if ref $self->sortcode;
   $self->accountnum($self->accountnum->()) if ref $self->accountnum;

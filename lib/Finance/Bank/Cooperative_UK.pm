@@ -130,6 +130,30 @@ sub login {
 
   $self->mech->submit_form(with_fields => \%form_data);
 
+  my $form_field = $self->mech->look_down(_tag => 'input', type => 'password');
+  if (!$form_field) {
+    $self->mech->dump;
+    die "Can't find form field for personal information";
+  }
+  # The name of the attribute on this object that holds the piece of
+  # information we need.
+  my $attr = {
+              birthplace => 'place_of_birth',
+              firstschool => 'first_school',
+              lastschool => 'last_school',
+              memorablename => 'name',
+             }->{$form_field->attr('id')};
+  if (!$attr) {
+    die "Don't know attribute for form field ".$form_field->attr('id');
+  }
+  my $val = $self->$attr;
+  $val = $val->() if ref $val;
+
+  $self->mech->submit_form(with_fields => {$form_field->attr('name') => $val});
+
+  open my $fh, ">", "debug.out";
+  print $fh $self->mech->content;
+
   $self->mech->dump;
 
   exit;

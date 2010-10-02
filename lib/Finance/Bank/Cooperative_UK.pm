@@ -4,6 +4,10 @@ use strict;
 use Moose;
 use WWW::Mechanize;
 use WWW::Mechanize::TreeBuilder;
+use Data::Dump::Streamer 'Dump';
+use HTML::TreeBuilder;
+use charnames ':full';
+use Time::ParseDate;
 
 our $VERSION = '0.001';
 
@@ -149,7 +153,9 @@ sub login {
   my $val = $self->$attr;
   $val = $val->() if ref $val;
 
-  $self->mech->submit_form(with_fields => {$form_field->attr('name') => $val});
+  my $form = {$form_field->attr('name') => $val};
+  Dump $form;
+  $self->mech->submit_form(with_fields => $form);
 
   open my $fh, ">", "debug.out";
   print $fh $self->mech->content;
@@ -157,6 +163,50 @@ sub login {
   $self->mech->dump;
 
   exit;
+}
+
+sub parse_number {
+  my ($num) = @_;
+  if ($num eq "\xA0") {
+    return 0;
+  } else {
+    $num =~ s/\N{POUND SIGN}//;
+    return 0+$num;
+  }
+}
+
+sub parse_recent_items {
+  my ($self, $html) = @_;
+  my $tree = HTML::TreeBuilder->new_from_content($html) or die "Couldn't parse HTML at all";
+  
+  my @data;
+  
+  # FIXME: Parse the metadata too?
+  
+  for my $datarowl ($tree->look_down(_tag => 'td', class => 'dataRowL')) {
+    my $row = $datarowl->parent;
+    my ($date) = $row->address('.0')->as_text;
+    $date = parsedate($date, ZONE => 'Europe/London', UK => 1, FUZZY => 0);
+    my $thirdparty = $row->address('.1')->as_text;
+    my $credit = parse_number($row->address('.2')->as_text);
+    my $debit = parse_number($row->address('.3')->as_text);
+
+    if ($thirdparty =~ m/\*Last Statement\*/) {
+      next;
+    }
+
+    # If I feel like it, parse out ATMs, stick original text in "origtext", date from thirdparty in date.
+
+    push @data, {debit => $debit,
+                 credit => $credit,
+                 date => $date,
+                 _date_readable => scalar localtime $date,
+                 party => $thirdparty
+                };
+  }
+
+  $tree->delete;
+  return \@data;
 }
 
 'Is the pope Catholic?';
